@@ -4,17 +4,12 @@ import os.path
 import re
 import sys
 
-import pdb
-#                pdb.set_trace()
-
-
-
 class Menu:
 
     def __init__(self):
         self.query = [0, 0, 0, 0, 0]
-        self.low_range = 0
-        self.hi_range = 0
+        self.low_range = '1'
+        self.hi_range = '1'
         self.back = 0
         self.selected_entries = {}
         self.home_menu = ["[1]: Add entry",
@@ -60,7 +55,11 @@ class Menu:
                 for item in self.date_menu:
                     print(item)
                 nav2 = input(">")
-                nav = str(5+int(nav2))
+                try:
+                    nav = str(5+int(nav2))
+                except ValueError:
+                    print("That is not a valid menu command.")
+                    self.main_nav(num)
             self.search(nav)
         elif num == 3:
             # Main: Quit
@@ -101,36 +100,45 @@ class Menu:
             })
 
     def search(self, num):
+        date_check = r'\d{2}\/\d{2}\/\d{4}'
         # 1 - Find by date
         if num == '1':
             self.query = input("Please enter the date (mm/dd/yyyy): ")
             self.query = datetime.datetime.strptime(self.query, "%m/%d/%Y")
             self.finder(num)
         # 2 - Find by time spent
-        if num == '2':
+        elif num == '2':
             self.query = input("Time Spent: ")
             self.finder(num)
         # 3 - Find by exact string
-        if num == '3':
+        elif num == '3':
             self.query = input("Enter your search string: ")
             self.finder(num)
         # 4 - Find by pattern
-        if num == '4':
+        elif num == '4':
             self.query = input("Enter your search pattern (regular expression): ")
             self.finder(num)
         # Home
-        if num == '5' or num == '8':
+        elif num == '5' or num == '8':
             self.main_nav(0)
         # 6 - Search within a range
-        if num == '6':
+        elif num == '6':
             self.low_range = input("Please enter the beginning date (mm/dd/yyyy): ")
+            if not re.match(date_check, self.low_range):
+                print("Error! input needs to be in the following format: mm/dd/yyyy")
+                self.search(num)
             self.hi_range = input("Please enter the end date (mm/dd/yyyy): ")
+            if not re.match(date_check, self.hi_range):
+                print("Error! input needs to be in the following format: mm/dd/yyyy")
+                self.search(num)
             self.low_range = datetime.datetime.strptime(self.low_range, "%m/%d/%Y")
             self.hi_range = datetime.datetime.strptime(self.hi_range, "%m/%d/%Y")
             self.finder(num)
         # 7 - List all dates
-        if num == '7':
+        elif num == '7':
             self.finder(num)
+        else:
+            print("That is not a valid menu command.")
 
     def finder(self, int):
         self.back = int
@@ -150,9 +158,6 @@ class Menu:
                     print("[{}] {}: {}".format(n, row['date'], row['task_name']))
                     self.selected_entries[n] = row
                     n = n + 1
-            print("[0] Return Home")
-            nav = input("Please select an entry: ")
-            self.presenter(nav)
 
         elif int == '2':    # 2 - Find by time spent
             n = 1
@@ -161,9 +166,6 @@ class Menu:
                     print("[{}] {}: {}".format(n, row['time_spent'], row['task_name']))
                     self.selected_entries[n] = row
                     n = n + 1
-            print("[0] Return Home")
-            nav = input("Please select an entry: ")
-            self.presenter(nav)
 
         elif int == '3':    # 3 - FInd by exact string
             n = 1
@@ -172,9 +174,6 @@ class Menu:
                     print("[{}] {}: {}".format(n, row['task_name'], row['notes']))
                     self.selected_entries[n] = row
                     n = n + 1
-            print("[0] Return Home")
-            nav = input("Please select an entry: ")
-            self.presenter(nav)
 
         elif int == '4':    # 4 - Find by pattern
             n = 1
@@ -184,21 +183,15 @@ class Menu:
                     print("[{}] {}: {}".format(n, row['task_name'], row['notes']))
                     self.selected_entries[n] = row
                     n += 1
-            print("[0] Return Home")
-            nav = input("Please select an entry: ")
-            self.presenter(nav)
 
         elif int == '6':    # 6 - Search within a range
             n = 1
             for row in rows:
                 date = datetime.datetime.strptime(row['date'], "%m/%d/%Y")
-                if self.low_range < date and date < self.hi_range:
+                if self.low_range <= date and date <= self.hi_range:
                     print("[{}] {}: {}".format(n, row['date'], row['task_name']))
                     self.selected_entries[n] = row
                     n = n + 1
-            print("[0] Return Home")
-            nav = input("Please select an entry: ")
-            self.presenter(nav)
 
         elif int == '7':    # 7 - List all dates
             n = 1
@@ -206,9 +199,15 @@ class Menu:
                 print("[{}] {}: {}".format(n, row['date'], row['task_name']))
                 self.selected_entries[n] = row
                 n = n + 1
-            print("[0] Return Home")
+        else:
+            print("That is not a valid menu command.")
+
+        print("[0] Return Home")
+        nav = input("Please select an entry: ")
+        while not nav:
+            print("Please enter a valid command")
             nav = input("Please select an entry: ")
-            self.presenter(nav)
+        self.presenter(nav)
 
     def presenter(self, num):
         var = int(num)
@@ -235,7 +234,10 @@ class Menu:
 
         nav = input(">")
         if nav.upper() == 'E':
-            self.editor(self.selected_entries[var])
+            try:
+                self.editor(self.selected_entries[var])
+            except KeyError:
+                self.main_nav(0)
         elif nav.upper() == 'N':
             try:
                 self.selected_entries[var+1]
@@ -254,6 +256,8 @@ class Menu:
             self.presenter(choice)
         elif nav.upper == 'H':
             self.main_nav(0)
+        else:
+            print("That is not a valid menu command.")
 
     def formatter(self, dict):
         print(
